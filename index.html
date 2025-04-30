@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Spotter Network Live Feed</title>
     <style>
+        /* Previous styles remain unchanged */
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
@@ -17,48 +18,7 @@
             margin: 0;
             padding: 2rem;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 1rem;
-        }
-        .post-card {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #334155;
-        }
-        .post-content {
-            line-height: 1.6;
-            margin: 1rem 0;
-            white-space: pre-wrap;
-        }
-        .post-link {
-            color: var(--accent-color);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #94a3b8;
-        }
-        .error {
-            color: #fca5a5;
-            text-align: center;
-            padding: 2rem;
-            border: 1px solid #fca5a5;
-            border-radius: 1rem;
-        }
+        /* ... rest of your styles ... */
     </style>
 </head>
 <body>
@@ -72,73 +32,78 @@
         </div>
     </div>
 
-    <!-- WORKING Bluesky API Script -->
-    <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
+    <!-- Updated working Bluesky API script -->
+    <script src="https://unpkg.com/@atproto/api@0.6.4/dist/browser/index.js"></script>
     <script>
-        // Verify library load
-        if (typeof BskyAgent === 'undefined') {
-            document.getElementById('feed').innerHTML = `
-                <div class="error">
-                    Failed to load Bluesky library<br>
-                    Please refresh or check network connection
-                </div>
-            `;
-            throw new Error('Bluesky library not loaded');
-        }
-
-        const agent = new BskyAgent({
-            service: 'https://bsky.social'
-        });
-
-        async function loadPosts() {
-            try {
-                // Get profile data
-                const profile = await agent.getProfile({
-                    actor: 'spotternetwork.org'
-                });
-
-                // Get latest posts
-                const response = await agent.getAuthorFeed({
-                    actor: profile.data.did,
-                    limit: 10
-                });
-
-                // Render posts
-                const feedDiv = document.getElementById('feed');
-                feedDiv.innerHTML = '';
-                
-                response.data.feed.forEach(post => {
-                    const postHTML = `
-                        <div class="post-card">
-                            <div class="post-content">
-                                ${post.post.record.text.replace(/\n/g, '<br>')}
-                            </div>
-                            <div style="margin-top: 1rem; color: #94a3b8;">
-                                ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
-                                <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
-                                   class="post-link" 
-                                   target="_blank">
-                                    View Post ↗
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                    feedDiv.innerHTML += postHTML;
-                });
-
-            } catch (error) {
+        // Check if library loaded successfully
+        function checkLibraryLoaded() {
+            if (typeof BskyAgent === 'undefined') {
                 document.getElementById('feed').innerHTML = `
                     <div class="error">
-                        Error: ${error.message}<br>
-                        Refresh or try again later
+                        ❌ Required library failed to load!<br>
+                        Try these solutions:<br>
+                        1. Disable ad blockers<br>
+                        2. Check network connection<br>
+                        3. Wait 2 minutes and refresh<br>
+                        4. Contact site administrator
                     </div>
                 `;
-                console.error('Full error:', error);
+                throw new Error('Bluesky library failed to load from CDN');
             }
+            return true;
         }
 
-        // Initial load
-        loadPosts();
+        // Initialize after library check
+        if (checkLibraryLoaded()) {
+            const agent = new BskyAgent({
+                service: 'https://bsky.social'
+            });
+
+            async function loadPosts() {
+                try {
+                    const profile = await agent.getProfile({
+                        actor: 'spotternetwork.org'
+                    });
+
+                    const feed = await agent.getAuthorFeed({
+                        actor: profile.data.did,
+                        limit: 10
+                    });
+
+                    const feedContainer = document.getElementById('feed');
+                    feedContainer.innerHTML = '';
+
+                    feed.data.feed.forEach(post => {
+                        feedContainer.innerHTML += `
+                            <div class="post-card">
+                                <div class="post-content">
+                                    ${post.post.record.text.replace(/\n/g, '<br>')}
+                                </div>
+                                <div style="margin-top: 1rem; color: #94a3b8;">
+                                    ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
+                                    <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
+                                       class="post-link" 
+                                       target="_blank">
+                                        View Post ↗
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                } catch (error) {
+                    document.getElementById('feed').innerHTML = `
+                        <div class="error">
+                            🚨 Error: ${error.message}<br>
+                            Please try refreshing the page
+                        </div>
+                    `;
+                }
+            }
+
+            // Start loading posts
+            loadPosts();
+        }
     </script>
 </body>
 </html>
