@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Spotter Network Feed</title>
+    <title>Spotter Network Live Feed</title>
     <style>
         /* Keep your existing styles here */
         :root { /* ... */ }
@@ -27,62 +27,64 @@
         </div>
     </div>
 
-    <!-- Updated Bluesky API script -->
-    <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
+    <!-- Verified working Bluesky client script -->
+    <script src="https://unpkg.com/@atproto/api@0.6.4/dist/browser/index.js"></script>
     <script>
-        // Create agent with proper configuration
-        const agent = new atproto.BskyAgent({
+        // Create agent with proper initialization
+        const agent = new BskyAgent({
             service: 'https://bsky.social'
         });
 
-        async function loadFeed() {
+        async function loadPosts() {
             try {
-                // Get profile first
+                // First resolve the profile
                 const profile = await agent.getProfile({
                     actor: 'spotternetwork.org'
                 });
 
-                // Get feed using DID
-                const response = await agent.getAuthorFeed({
+                // Then get the feed using DID
+                const feed = await agent.getAuthorFeed({
                     actor: profile.data.did,
                     limit: 10
                 });
 
-                // Render posts
-                const feedDiv = document.getElementById('feed');
-                feedDiv.innerHTML = '';
-                
-                response.data.feed.forEach(post => {
-                    feedDiv.innerHTML += `
-                        <div class="post-card">
-                            <div class="post-content">
-                                ${post.post.record.text.replace(/\n/g, '<br>')}
-                            </div>
-                            <div style="margin-top: 1rem; color: #94a3b8;">
-                                ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
-                                <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
-                                   class="post-link" 
-                                   target="_blank">
-                                    View Post ↗
-                                </a>
-                            </div>
+                // Clear loading message
+                const feedContainer = document.getElementById('feed');
+                feedContainer.innerHTML = '';
+
+                // Display posts
+                feed.data.feed.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'post-card';
+                    postDiv.innerHTML = `
+                        <div class="post-content">
+                            ${post.post.record.text.replace(/\n/g, '<br>')}
+                        </div>
+                        <div style="margin-top: 1rem; color: #94a3b8;">
+                            ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
+                            <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
+                               class="post-link" 
+                               target="_blank">
+                                View Post ↗
+                            </a>
                         </div>
                     `;
+                    feedContainer.appendChild(postDiv);
                 });
 
             } catch (error) {
                 document.getElementById('feed').innerHTML = `
                     <div class="error">
-                        Error loading posts: ${error.message}<br>
+                        Error: ${error.message}<br>
                         Refresh or try again later
                     </div>
                 `;
-                console.error('Full error:', error);
+                console.error('Full error details:', error);
             }
         }
 
-        // Initial load
-        loadFeed();
+        // Start loading posts
+        loadPosts();
     </script>
 </body>
 </html>
