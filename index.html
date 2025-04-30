@@ -2,63 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Spotter Network Public Feed</title>
+    <title>Spotter Network Feed</title>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-color: #f8fafc;
-            --accent-color: #7dd3fc;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 2rem;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 1rem;
-        }
-        .post-card {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #334155;
-        }
-        .post-content {
-            line-height: 1.6;
-            margin: 1rem 0;
-            white-space: pre-wrap;
-        }
-        .post-link {
-            color: var(--accent-color);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #94a3b8;
-        }
-        .error {
-            color: #fca5a5;
-            text-align: center;
-            padding: 2rem;
-            border: 1px solid #fca5a5;
-            border-radius: 1rem;
-        }
+        /* Keep your existing styles here */
+        :root { /* ... */ }
+        body { /* ... */ }
+        .container { /* ... */ }
+        .header { /* ... */ }
+        .post-card { /* ... */ }
+        .post-content { /* ... */ }
+        .post-link { /* ... */ }
+        .loading { /* ... */ }
+        .error { /* ... */ }
     </style>
 </head>
 <body>
@@ -72,78 +27,61 @@
         </div>
     </div>
 
-    <!-- Use browser build instead of ES modules -->
+    <!-- Updated Bluesky API script -->
     <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
     <script>
-        const agent = new BskyAgent({
+        // Create agent with proper configuration
+        const agent = new atproto.BskyAgent({
             service: 'https://bsky.social'
         });
 
-        async function getPublicPosts() {
+        async function loadFeed() {
             try {
+                // Get profile first
                 const profile = await agent.getProfile({
                     actor: 'spotternetwork.org'
                 });
 
-                if (!profile.success) {
-                    throw new Error('Profile not found');
-                }
-
+                // Get feed using DID
                 const response = await agent.getAuthorFeed({
                     actor: profile.data.did,
-                    limit: 30
+                    limit: 10
                 });
 
-                return response.data.feed;
-            } catch (error) {
-                console.error('API Error:', error);
-                throw new Error(`Failed to load posts: ${error.message}`);
-            }
-        }
-
-        function renderPosts(posts) {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = '';
-
-            posts.forEach(post => {
-                const card = document.createElement('div');
-                card.className = 'post-card';
-                card.innerHTML = `
-                    <div class="post-content">${post.post.record.text.replace(/\n/g, '<br>')}</div>
-                    <div style="margin-top: 1rem; color: #94a3b8;">
-                        ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
-                        <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
-                           class="post-link" 
-                           target="_blank">
-                            View on Bluesky ↗
-                        </a>
-                    </div>
-                `;
-                feed.appendChild(card);
-            });
-        }
-
-        async function loadFeed() {
-            try {
-                const posts = await getPublicPosts();
+                // Render posts
+                const feedDiv = document.getElementById('feed');
+                feedDiv.innerHTML = '';
                 
-                if (!posts || posts.length === 0) {
-                    throw new Error('No public posts found (try refreshing)');
-                }
-                
-                document.getElementById('feed').innerHTML = '';
-                renderPosts(posts);
-                
+                response.data.feed.forEach(post => {
+                    feedDiv.innerHTML += `
+                        <div class="post-card">
+                            <div class="post-content">
+                                ${post.post.record.text.replace(/\n/g, '<br>')}
+                            </div>
+                            <div style="margin-top: 1rem; color: #94a3b8;">
+                                ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
+                                <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
+                                   class="post-link" 
+                                   target="_blank">
+                                    View Post ↗
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+
             } catch (error) {
                 document.getElementById('feed').innerHTML = `
                     <div class="error">
-                        ${error.message}<br>
-                        Open browser console (F12) for details
+                        Error loading posts: ${error.message}<br>
+                        Refresh or try again later
                     </div>
                 `;
+                console.error('Full error:', error);
             }
         }
 
+        // Initial load
         loadFeed();
     </script>
 </body>
