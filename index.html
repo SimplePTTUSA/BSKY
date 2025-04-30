@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <title>Spotter Network Live Feed</title>
     <style>
-        /* Previous styles remain unchanged */
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-color: #f8fafc;
             --accent-color: #7dd3fc;
         }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -18,92 +18,152 @@
             margin: 0;
             padding: 2rem;
         }
-        /* ... rest of your styles ... */
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 1rem;
+        }
+
+        .post-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+
+        .post-content {
+            line-height: 1.6;
+            margin: 1rem 0;
+            white-space: pre-wrap;
+        }
+
+        .post-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+
+        .error {
+            color: #fca5a5;
+            text-align: center;
+            padding: 2rem;
+            border: 1px solid #fca5a5;
+            border-radius: 1rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🌪️ Spotter Network Updates</h1>
-            <p>Public Bluesky Posts</p>
+            <p>Latest Public Bluesky Posts</p>
         </div>
         <div id="feed">
             <div class="loading">Loading public posts...</div>
         </div>
     </div>
 
-    <!-- Updated working Bluesky API script -->
-    <script src="https://unpkg.com/@atproto/api@0.6.4/dist/browser/index.js"></script>
+    <!-- Bluesky API Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
+    
     <script>
-        // Check if library loaded successfully
-        function checkLibraryLoaded() {
-            if (typeof BskyAgent === 'undefined') {
-                document.getElementById('feed').innerHTML = `
-                    <div class="error">
-                        ❌ Required library failed to load!<br>
-                        Try these solutions:<br>
-                        1. Disable ad blockers<br>
-                        2. Check network connection<br>
-                        3. Wait 2 minutes and refresh<br>
-                        4. Contact site administrator
+        // Verify library loading
+        if (typeof BskyAgent === 'undefined') {
+            showError('Bluesky library failed to load. Please disable ad blockers and refresh.');
+            throw new Error('Bluesky client not loaded');
+        }
+
+        const agent = new BskyAgent({
+            service: 'https://bsky.social'
+        });
+
+        async function loadFeed() {
+            try {
+                // Get profile information
+                const profile = await agent.getProfile({
+                    actor: 'spotternetwork.org'
+                });
+
+                // Fetch recent posts
+                const response = await agent.getAuthorFeed({
+                    actor: profile.data.did,
+                    limit: 10
+                });
+
+                renderPosts(response.data.feed);
+                
+            } catch (error) {
+                showError(`Failed to load posts: ${error.message}`);
+                console.error('Error details:', error);
+            }
+        }
+
+        function renderPosts(posts) {
+            const feedDiv = document.getElementById('feed');
+            feedDiv.innerHTML = '';
+
+            if (!posts || posts.length === 0) {
+                feedDiv.innerHTML = '<div class="error">No public posts found</div>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const postElement = document.createElement('div');
+                postElement.className = 'post-card';
+                postElement.innerHTML = `
+                    <div class="post-content">
+                        ${post.post.record.text.replace(/\n/g, '<br>')}
+                    </div>
+                    <div style="margin-top: 1rem; color: #94a3b8;">
+                        ${new Date(post.post.record.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })} • 
+                        <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
+                           class="post-link" 
+                           target="_blank">
+                            View Post ↗
+                        </a>
                     </div>
                 `;
-                throw new Error('Bluesky library failed to load from CDN');
-            }
-            return true;
-        }
-
-        // Initialize after library check
-        if (checkLibraryLoaded()) {
-            const agent = new BskyAgent({
-                service: 'https://bsky.social'
+                feedDiv.appendChild(postElement);
             });
-
-            async function loadPosts() {
-                try {
-                    const profile = await agent.getProfile({
-                        actor: 'spotternetwork.org'
-                    });
-
-                    const feed = await agent.getAuthorFeed({
-                        actor: profile.data.did,
-                        limit: 10
-                    });
-
-                    const feedContainer = document.getElementById('feed');
-                    feedContainer.innerHTML = '';
-
-                    feed.data.feed.forEach(post => {
-                        feedContainer.innerHTML += `
-                            <div class="post-card">
-                                <div class="post-content">
-                                    ${post.post.record.text.replace(/\n/g, '<br>')}
-                                </div>
-                                <div style="margin-top: 1rem; color: #94a3b8;">
-                                    ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
-                                    <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
-                                       class="post-link" 
-                                       target="_blank">
-                                        View Post ↗
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                } catch (error) {
-                    document.getElementById('feed').innerHTML = `
-                        <div class="error">
-                            🚨 Error: ${error.message}<br>
-                            Please try refreshing the page
-                        </div>
-                    `;
-                }
-            }
-
-            // Start loading posts
-            loadPosts();
         }
+
+        function showError(message) {
+            document.getElementById('feed').innerHTML = `
+                <div class="error">
+                    ${message}<br>
+                    <button onclick="window.location.reload()" 
+                            style="margin-top: 1rem; padding: 0.5rem 1rem;">
+                        Refresh Page
+                    </button>
+                </div>
+            `;
+        }
+
+        // Start loading the feed
+        loadFeed();
     </script>
 </body>
 </html>
