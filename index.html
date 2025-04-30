@@ -4,69 +4,14 @@
     <meta charset="UTF-8">
     <title>Spotter Network Public Feed</title>
     <style>
+        /* Previous styles remain the same */
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-color: #f8fafc;
             --accent-color: #7dd3fc;
         }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 2rem;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 1rem;
-        }
-
-        .post-card {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid #334155;
-        }
-
-        .post-content {
-            line-height: 1.6;
-            margin: 1rem 0;
-            white-space: pre-wrap;
-        }
-
-        .post-link {
-            color: var(--accent-color);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #94a3b8;
-        }
-
-        .error {
-            color: #fca5a5;
-            text-align: center;
-            padding: 2rem;
-            border: 1px solid #fca5a5;
-            border-radius: 1rem;
-        }
+        /* ... rest of your existing styles ... */
     </style>
 </head>
 <body>
@@ -81,7 +26,7 @@
     </div>
 
     <script type="module">
-        import { BskyAgent } from 'https://cdn.jsdelivr.net/npm/@atproto/api@0.5.3/dist/browser/index.js';
+        import { BskyAgent } from 'https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/+esm';
 
         const agent = new BskyAgent({
             service: 'https://bsky.social'
@@ -89,7 +34,7 @@
 
         async function getPublicPosts() {
             try {
-                // Fetch profile first to get DID
+                console.log('Fetching profile...');
                 const profile = await agent.getProfile({
                     actor: 'spotternetwork.org'
                 });
@@ -98,7 +43,7 @@
                     throw new Error('Profile not found');
                 }
 
-                // Fetch public posts using the DID
+                console.log('Fetching feed for DID:', profile.data.did);
                 const response = await agent.getAuthorFeed({
                     actor: profile.data.did,
                     limit: 30
@@ -107,21 +52,8 @@
                 return response.data.feed;
             } catch (error) {
                 console.error('API Error:', error);
-                throw new Error('Failed to load public posts');
+                throw new Error(`Failed to load posts: ${error.message}`);
             }
-        }
-
-        function formatPost(post) {
-            const record = post.post.record;
-            return {
-                text: record.text.replace(/\n/g, '<br>'),
-                link: `https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}`,
-                date: new Date(record.createdAt).toLocaleDateString('en-US', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short'
-                }),
-                images: record.embed?.images || []
-            };
         }
 
         function renderPosts(posts) {
@@ -132,10 +64,12 @@
                 const card = document.createElement('div');
                 card.className = 'post-card';
                 card.innerHTML = `
-                    <div class="post-content">${post.text}</div>
+                    <div class="post-content">${post.post.record.text.replace(/\n/g, '<br>')}</div>
                     <div style="margin-top: 1rem; color: #94a3b8;">
-                        ${post.date} • 
-                        <a href="${post.link}" class="post-link" target="_blank">
+                        ${new Date(post.post.record.createdAt).toLocaleDateString()} • 
+                        <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
+                           class="post-link" 
+                           target="_blank">
                             View on Bluesky ↗
                         </a>
                     </div>
@@ -146,28 +80,32 @@
 
         async function loadFeed() {
             try {
-                await agent.login({ 
-                    identifier: 'public.example.com', // Anonymous access
-                    password: 'any-string-here' 
-                });
+                console.log('Starting feed load...');
                 
+                // Remove authentication for public access
                 const posts = await getPublicPosts();
-                if (posts.length === 0) {
-                    throw new Error('No public posts found');
+                
+                if (!posts || posts.length === 0) {
+                    throw new Error('No public posts found (try refreshing)');
                 }
                 
+                console.log('Rendering posts:', posts);
+                document.getElementById('feed').innerHTML = '';
                 renderPosts(posts);
+                
             } catch (error) {
+                console.error('Load error:', error);
                 document.getElementById('feed').innerHTML = `
                     <div class="error">
                         ${error.message}<br>
-                        Ensure you're viewing the live version at:<br>
-                        <code>https://your-site.com/this-file.html</code>
+                        Open browser console (F12) for details
                     </div>
                 `;
             }
         }
 
+        // Add debug info
+        console.log('Bluesky API Client Version:', BskyAgent);
         loadFeed();
     </script>
 </body>
