@@ -80,90 +80,81 @@
         </div>
     </div>
 
-    <!-- Bluesky API Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
-    
     <script>
-        // Verify library loading
-        if (typeof BskyAgent === 'undefined') {
-            showError('Bluesky library failed to load. Please disable ad blockers and refresh.');
-            throw new Error('Bluesky client not loaded');
-        }
-
-        const agent = new BskyAgent({
-            service: 'https://bsky.social'
-        });
-
-        async function loadFeed() {
+        const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+        const HANDLE = 'spotternetwork.org';
+        
+        async function fetchData() {
             try {
-                // Get profile information
-                const profile = await agent.getProfile({
-                    actor: 'spotternetwork.org'
-                });
-
-                // Fetch recent posts
-                const response = await agent.getAuthorFeed({
-                    actor: profile.data.did,
-                    limit: 10
-                });
-
-                renderPosts(response.data.feed);
+                // Step 1: Get DID from handle
+                const didResponse = await fetch(
+                    `${CORS_PROXY}${encodeURIComponent(
+                        `https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=${HANDLE}`
+                    )}`
+                );
                 
+                const didData = await didResponse.json();
+                const did = JSON.parse(didData.contents).did;
+
+                // Step 2: Get posts using DID
+                const feedResponse = await fetch(
+                    `${CORS_PROXY}${encodeURIComponent(
+                        `https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=${did}&limit=10`
+                    )}`
+                );
+
+                const feedData = await feedResponse.json();
+                const posts = JSON.parse(feedData.contents).feed;
+
+                // Step 3: Display posts
+                const feedDiv = document.getElementById('feed');
+                feedDiv.innerHTML = '';
+
+                posts.forEach(post => {
+                    const record = post.post.record;
+                    const postDate = new Date(record.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    feedDiv.innerHTML += `
+                        <div class="post-card">
+                            <div class="post-content">
+                                ${record.text.replace(/\n/g, '<br>')}
+                            </div>
+                            <div style="margin-top: 1rem; color: #94a3b8;">
+                                ${postDate} • 
+                                <a href="https://bsky.app/profile/${HANDLE}/post/${post.post.uri.split('/').pop()}" 
+                                   class="post-link" 
+                                   target="_blank">
+                                    View Post ↗
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+
             } catch (error) {
-                showError(`Failed to load posts: ${error.message}`);
-                console.error('Error details:', error);
-            }
-        }
-
-        function renderPosts(posts) {
-            const feedDiv = document.getElementById('feed');
-            feedDiv.innerHTML = '';
-
-            if (!posts || posts.length === 0) {
-                feedDiv.innerHTML = '<div class="error">No public posts found</div>';
-                return;
-            }
-
-            posts.forEach(post => {
-                const postElement = document.createElement('div');
-                postElement.className = 'post-card';
-                postElement.innerHTML = `
-                    <div class="post-content">
-                        ${post.post.record.text.replace(/\n/g, '<br>')}
-                    </div>
-                    <div style="margin-top: 1rem; color: #94a3b8;">
-                        ${new Date(post.post.record.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })} • 
-                        <a href="https://bsky.app/profile/spotternetwork.org/post/${post.post.uri.split('/').pop()}" 
-                           class="post-link" 
-                           target="_blank">
-                            View Post ↗
-                        </a>
+                document.getElementById('feed').innerHTML = `
+                    <div class="error">
+                        Error: ${error.message}<br>
+                        <button onclick="window.location.reload()" 
+                                style="margin-top: 1rem; padding: 0.5rem 1rem;
+                                background: var(--card-bg); border: none;
+                                color: var(--accent-color); cursor: pointer;">
+                            Try Again
+                        </button>
                     </div>
                 `;
-                feedDiv.appendChild(postElement);
-            });
+                console.error('Full error:', error);
+            }
         }
 
-        function showError(message) {
-            document.getElementById('feed').innerHTML = `
-                <div class="error">
-                    ${message}<br>
-                    <button onclick="window.location.reload()" 
-                            style="margin-top: 1rem; padding: 0.5rem 1rem;">
-                        Refresh Page
-                    </button>
-                </div>
-            `;
-        }
-
-        // Start loading the feed
-        loadFeed();
+        // Initial load
+        fetchData();
     </script>
 </body>
 </html>
