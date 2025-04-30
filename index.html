@@ -4,14 +4,61 @@
     <meta charset="UTF-8">
     <title>Spotter Network Public Feed</title>
     <style>
-        /* Previous styles remain the same */
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-color: #f8fafc;
             --accent-color: #7dd3fc;
         }
-        /* ... rest of your existing styles ... */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 1rem;
+        }
+        .post-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+        .post-content {
+            line-height: 1.6;
+            margin: 1rem 0;
+            white-space: pre-wrap;
+        }
+        .post-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+        .error {
+            color: #fca5a5;
+            text-align: center;
+            padding: 2rem;
+            border: 1px solid #fca5a5;
+            border-radius: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -25,16 +72,15 @@
         </div>
     </div>
 
-    <script type="module">
-        import { BskyAgent } from 'https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/+esm';
-
+    <!-- Use browser build instead of ES modules -->
+    <script src="https://cdn.jsdelivr.net/npm/@atproto/api@0.6.4/dist/browser/index.js"></script>
+    <script>
         const agent = new BskyAgent({
             service: 'https://bsky.social'
         });
 
         async function getPublicPosts() {
             try {
-                console.log('Fetching profile...');
                 const profile = await agent.getProfile({
                     actor: 'spotternetwork.org'
                 });
@@ -43,7 +89,6 @@
                     throw new Error('Profile not found');
                 }
 
-                console.log('Fetching feed for DID:', profile.data.did);
                 const response = await agent.getAuthorFeed({
                     actor: profile.data.did,
                     limit: 30
@@ -80,21 +125,16 @@
 
         async function loadFeed() {
             try {
-                console.log('Starting feed load...');
-                
-                // Remove authentication for public access
                 const posts = await getPublicPosts();
                 
                 if (!posts || posts.length === 0) {
                     throw new Error('No public posts found (try refreshing)');
                 }
                 
-                console.log('Rendering posts:', posts);
                 document.getElementById('feed').innerHTML = '';
                 renderPosts(posts);
                 
             } catch (error) {
-                console.error('Load error:', error);
                 document.getElementById('feed').innerHTML = `
                     <div class="error">
                         ${error.message}<br>
@@ -104,8 +144,6 @@
             }
         }
 
-        // Add debug info
-        console.log('Bluesky API Client Version:', BskyAgent);
         loadFeed();
     </script>
 </body>
